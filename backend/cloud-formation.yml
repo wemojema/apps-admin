@@ -44,7 +44,8 @@ Resources:
   LambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${ServiceName}-lambda"
+      # devops policy only permits iam:CreateRole on role/wemojemaauth* in this account
+      RoleName: !Sub "wemojemaauth-${ServiceName}-lambda"
       PermissionsBoundary: !Ref PermissionBoundaryArn
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
