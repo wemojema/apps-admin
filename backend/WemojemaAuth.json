@@ -1,0 +1,9 @@
+{
+  "profileName": "WemojemaAuth",
+  "stackParameters": [
+    { "ParameterKey": "Environment",    "ParameterValue": "prod" },
+    { "ParameterKey": "ServiceName",    "ParameterValue": "apps-admin-api" },
+    { "ParameterKey": "AuthHost",       "ParameterValue": "admin.auth.wemojema.com" },
+    { "ParameterKey": "FrontendOrigin", "ParameterValue": "*" }
+  ]
+}

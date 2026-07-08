@@ -1,0 +1,160 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Wemojema Apps Admin API — Lambda + API Gateway
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, prod]
+    Default: prod
+  ServiceName:
+    Type: String
+    Default: apps-admin-api
+  ArtifactBucket:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /infrastructure/S3BucketName
+  ArtifactKey:
+    Type: String
+    Description: S3 key of the Lambda JAR (injected by deploy.sh)
+  ArtifactSha256:
+    Type: String
+    Description: Base64-encoded SHA256 — changing this forces Lambda version replacement
+  PermissionBoundaryArn:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /devops/permission-boundary
+  AuthHost:
+    Type: String
+    Default: admin.auth.wemojema.com
+    Description: wemojema-auth tenant host for the admin app (issuer). Only its users are admins.
+  TenantsTable:
+    Type: String
+    Default: wemojema-auth-tenants
+  AdminQueueName:
+    Type: String
+    Default: wemojema-auth-admin
+  FrontendOrigin:
+    Type: String
+    Default: "*"
+    Description: CORS allowed origin for the admin SPA (tighten to the CloudFront/admin domain).
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ServiceName}-lambda"
+      PermissionsBoundary: !Ref PermissionBoundaryArn
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: AdminAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: TenantsRead
+                Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:Scan]
+                Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TenantsTable}'
+              - Sid: AdminQueueSend
+                Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AdminQueueName}'
+              - Sid: SesRead
+                Effect: Allow
+                Action: [ses:GetAccount, ses:GetEmailIdentity]
+                Resource: '*'
+
+  ApiLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref ServiceName
+      Runtime: java21
+      Handler: com.wemojema.apps.admin.handler.LambdaHandler
+      Role: !GetAtt LambdaRole.Arn
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Ref ArtifactKey
+      MemorySize: 1024
+      Timeout: 30
+      Environment:
+        Variables:
+          MICRONAUT_ENVIRONMENTS: production
+          WEMOJEMA_AUTH_HOST: !Ref AuthHost
+          TENANTS_TABLE: !Ref TenantsTable
+          ADMIN_QUEUE_URL: !Sub 'https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/${AdminQueueName}'
+          JAVA_TOOL_OPTIONS: -XX:TieredStopAtLevel=1
+
+  ApiLambdaVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref ApiLambda
+      CodeSha256: !Ref ArtifactSha256
+
+  ApiLambdaAlias:
+    Type: AWS::Lambda::Alias
+    Properties:
+      Name: live
+      FunctionName: !Ref ApiLambda
+      FunctionVersion: !GetAtt ApiLambdaVersion.Version
+
+  ApiLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ServiceName}"
+      RetentionInDays: !If [IsProd, 30, 3]
+
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "${ServiceName}-api"
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref FrontendOrigin
+        AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]
+        AllowHeaders: [Authorization, Content-Type]
+
+  HttpApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApiLambdaAlias.AliasArn}/invocations'
+      PayloadFormatVersion: '1.0'
+
+  HttpApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: '$default'
+      Target: !Sub 'integrations/${HttpApiIntegration}'
+
+  HttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  LambdaApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiLambdaAlias
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*'
+
+Outputs:
+  ApiUrl:
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+  LambdaArn:
+    Value: !GetAtt ApiLambda.Arn
