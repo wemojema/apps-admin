@@ -6,6 +6,7 @@ import { AuthProvider } from './auth/AuthContext'
 import { Layout } from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
 import { Callback } from './routes/Callback'
+import { Login } from './routes/Login'
 import { TenantDetail } from './routes/TenantDetail'
 import { TenantList } from './routes/TenantList'
 
@@ -15,6 +16,7 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <Routes>
           <Route path="/callback" element={<Callback />} />
+          <Route path="/login" element={<Login />} />
           <Route
             path="/"
             element={
