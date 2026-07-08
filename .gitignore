@@ -1,0 +1,17 @@
+# Java / Gradle
+**/.gradle/
+**/build/
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# Node / Vite
+**/node_modules/
+**/dist/
+
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
+
+# Local env / params
+*.local
+deploy-params-tmp.json

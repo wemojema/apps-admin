@@ -1,0 +1,30 @@
+micronaut:
+  application:
+    name: apps-admin-api
+  server:
+    cors:
+      enabled: true
+      configurations:
+        ui:
+          allowed-origins:
+            - https://admin.wemojema.com
+            - http://localhost:5173
+          allowed-methods:
+            - GET
+            - PUT
+            - POST
+            - DELETE
+            - OPTIONS
+
+# Admin API is itself a wemojema-auth tenant — only users of the admin tenant pass @WemojemaSecured.
+wemojema:
+  auth:
+    host: ${WEMOJEMA_AUTH_HOST:admin.auth.wemojema.com}
+
+aws:
+  tenants-table: ${TENANTS_TABLE:wemojema-auth-tenants}
+  admin-queue-url: ${ADMIN_QUEUE_URL:}
+
+logger:
+  levels:
+    com.wemojema.apps.admin: INFO
