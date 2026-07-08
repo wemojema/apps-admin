@@ -8,15 +8,12 @@ Parameters:
 
 Resources:
 
+  # Private by default; the OAC bucket policy below grants read only to CloudFront.
+  # (devops role lacks s3:PutBucketPublicAccessBlock, so no explicit block config here.)
   AssetsBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "${ServiceName}-${AWS::AccountId}"
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
 
   OriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
