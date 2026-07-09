@@ -5,6 +5,9 @@ Parameters:
   ServiceName:
     Type: String
     Default: apps-admin-web
+  ApiOriginDomain:
+    Type: String
+    Description: API Gateway host (no scheme) — served same-origin under /api/* so there's no CORS.
 
 Resources:
 
@@ -37,6 +40,18 @@ Resources:
             OriginAccessControlId: !Ref OriginAccessControl
             S3OriginConfig:
               OriginAccessIdentity: ""
+          - Id: Api
+            DomainName: !Ref ApiOriginDomain
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+        # /api/* is served from the API Gateway origin — same-origin, so no CORS.
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: Api
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad  # Managed-CachingDisabled
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac  # AllViewerExceptHostHeader
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
         DefaultCacheBehavior:
           TargetOriginId: S3
           ViewerProtocolPolicy: redirect-to-https
