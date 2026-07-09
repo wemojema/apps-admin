@@ -23,6 +23,7 @@ dependencies {
     annotationProcessor("io.micronaut.serde:micronaut-serde-processor")
 
     implementation("io.micronaut:micronaut-http-server-netty")
+    implementation("io.micronaut:micronaut-http-client")  // required for the SDK's JWKS fetch
     implementation("io.micronaut.aws:micronaut-function-aws-api-proxy")
     implementation("io.micronaut.serde:micronaut-serde-jackson")
     implementation("com.wemojema:wemojema-auth-sdk:0.0.1-SNAPSHOT")
