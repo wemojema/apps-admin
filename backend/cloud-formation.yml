@@ -113,16 +113,13 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${ServiceName}"
       RetentionInDays: !If [IsProd, 30, 3]
 
+  # CORS is handled by the Micronaut app (its filter answers preflight before security).
+  # No API Gateway CorsConfiguration — it would duplicate headers and route OPTIONS to a 401.
   HttpApi:
     Type: AWS::ApiGatewayV2::Api
     Properties:
       Name: !Sub "${ServiceName}-api"
       ProtocolType: HTTP
-      CorsConfiguration:
-        AllowOrigins:
-          - !Ref FrontendOrigin
-        AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]
-        AllowHeaders: [Authorization, Content-Type]
 
   HttpApiIntegration:
     Type: AWS::ApiGatewayV2::Integration

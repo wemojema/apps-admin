@@ -2,19 +2,11 @@ micronaut:
   application:
     name: apps-admin-api
   server:
+    # Micronaut's CORS filter answers preflight OPTIONS (200) before security runs.
+    # Permissive origins is fine — every endpoint is bearer-token protected. API Gateway
+    # does NOT also do CORS (would duplicate the header and $default-route OPTIONS to a 401).
     cors:
       enabled: true
-      configurations:
-        ui:
-          allowed-origins:
-            - https://admin.wemojema.com
-            - http://localhost:5173
-          allowed-methods:
-            - GET
-            - PUT
-            - POST
-            - DELETE
-            - OPTIONS
 
 # Admin API is itself a wemojema-auth tenant — only users of the admin tenant pass @WemojemaSecured.
 wemojema:
