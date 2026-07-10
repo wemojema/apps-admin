@@ -43,3 +43,6 @@ export const getTenantStatus = (token: string, id: string) =>
 
 export const getSesAccount = (token: string) =>
   apiFetch<SesAccountStatus>('/api/v1/account/ses', { token })
+
+export const provisionTenant = (token: string, id: string) =>
+  apiFetch<void>(`/api/v1/tenants/${enc(id)}/provision`, { method: 'POST', token })

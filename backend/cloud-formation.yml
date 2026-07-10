@@ -35,6 +35,14 @@ Parameters:
     Type: String
     Default: "*"
     Description: CORS allowed origin for the admin SPA (tighten to the CloudFront/admin domain).
+  OrgAccountId:
+    Type: String
+    Default: "353732995325"
+    Description: Primary/org account hosting org-control + the provisioning queue.
+  AuthCfDomain:
+    Type: String
+    Default: d1ijghczvk5zpo.cloudfront.net
+    Description: Prod auth CloudFront domain — target of CREATE_AUTH_CNAME.
 
 Conditions:
   IsProd: !Equals [!Ref Environment, prod]
@@ -69,6 +77,10 @@ Resources:
                 Effect: Allow
                 Action: sqs:SendMessage
                 Resource: !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${AdminQueueName}'
+              - Sid: ProvisioningQueueSend
+                Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !Sub 'arn:aws:sqs:${AWS::Region}:${OrgAccountId}:org-control-provisioning'
               - Sid: SesRead
                 Effect: Allow
                 Action: [ses:GetAccount, ses:GetEmailIdentity]
@@ -92,6 +104,9 @@ Resources:
           WEMOJEMA_AUTH_HOST: !Ref AuthHost
           TENANTS_TABLE: !Ref TenantsTable
           ADMIN_QUEUE_URL: !Sub 'https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/${AdminQueueName}'
+          PROVISIONING_QUEUE_URL: !Sub 'https://sqs.${AWS::Region}.amazonaws.com/${OrgAccountId}/org-control-provisioning'
+          WEMOJEMA_AUTH_ACCOUNT_ID: !Ref AWS::AccountId
+          AUTH_CF_DOMAIN: !Ref AuthCfDomain
           JAVA_TOOL_OPTIONS: -XX:TieredStopAtLevel=1
 
   ApiLambdaVersion:

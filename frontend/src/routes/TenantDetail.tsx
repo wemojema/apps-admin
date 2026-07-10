@@ -4,6 +4,7 @@ import {
   deleteTenant,
   getTenant,
   getTenantStatus,
+  provisionTenant,
   putTenant,
   type Tenant,
   type TenantStatus,
@@ -33,6 +34,8 @@ export function TenantDetail({ mode }: { mode: 'create' | 'edit' }) {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [provisioning, setProvisioning] = useState(false)
+  const [provisionMsg, setProvisionMsg] = useState<string | null>(null)
 
   useEffect(() => {
     if (mode !== 'edit' || !id || !accessToken) return
@@ -70,6 +73,27 @@ export function TenantDetail({ mode }: { mode: 'create' | 'edit' }) {
     }
   }
 
+  async function provision() {
+    if (!accessToken || !id) return
+    if (
+      !window.confirm(
+        `Provision DNS + email for ${id}?\n\nQueues CREATE_AUTH_CNAME (auth subdomain) and PROVISION_TENANT_EMAIL (sender domain) to org-control.`,
+      )
+    )
+      return
+    setProvisioning(true)
+    setProvisionMsg(null)
+    setError(null)
+    try {
+      await provisionTenant(accessToken, id)
+      setProvisionMsg('Queued. org-control will create the DNS + email records shortly.')
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setProvisioning(false)
+    }
+  }
+
   function copySnippet() {
     const tid = (mode === 'edit' ? id! : form.tenantId.trim()) || '<tenant-host>'
     const snippet = [
@@ -102,6 +126,7 @@ export function TenantDetail({ mode }: { mode: 'create' | 'edit' }) {
       </div>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {provisionMsg && <p className="mt-4 text-sm text-green-600">{provisionMsg}</p>}
 
       <div className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-white p-6">
         <Field
@@ -149,6 +174,15 @@ export function TenantDetail({ mode }: { mode: 'create' | 'edit' }) {
         >
           {copied ? 'Copied!' : 'Copy integration snippet'}
         </button>
+        {mode === 'edit' && (
+          <button
+            onClick={provision}
+            disabled={provisioning}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            {provisioning ? 'Provisioning…' : 'Provision DNS + email'}
+          </button>
+        )}
         {mode === 'edit' && (
           <button
             onClick={remove}

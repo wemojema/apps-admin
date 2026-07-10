@@ -12,6 +12,10 @@ micronaut:
 wemojema:
   auth:
     host: ${WEMOJEMA_AUTH_HOST:admin.auth.wemojema.com}
+  provisioning:
+    queue-url: ${PROVISIONING_QUEUE_URL:}
+    auth-account-id: ${WEMOJEMA_AUTH_ACCOUNT_ID:819693013672}
+    auth-cf-domain: ${AUTH_CF_DOMAIN:d1ijghczvk5zpo.cloudfront.net}
 
 aws:
   tenants-table: ${TENANTS_TABLE:wemojema-auth-tenants}
