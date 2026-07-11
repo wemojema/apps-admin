@@ -60,6 +60,9 @@ tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJ
     archiveBaseName.set("apps-admin-api")
     archiveClassifier.set("")
     archiveVersion.set("")
+    // Merge META-INF/services so all HttpResponseFactory impls survive the fat JAR;
+    // without this the error path crashes with "ServletResponseFactory not present".
+    mergeServiceFiles()
 }
 
 tasks.named("build") {
