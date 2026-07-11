@@ -8,6 +8,14 @@ Parameters:
   ApiOriginDomain:
     Type: String
     Description: API Gateway host (no scheme) — served same-origin under /api/* so there's no CORS.
+  AdminDomain:
+    Type: String
+    Default: admin.wemojema.com
+    Description: Custom domain for the admin SPA (must be covered by CertificateArn).
+  CertificateArn:
+    Type: String
+    Default: arn:aws:acm:us-east-1:819693013672:certificate/766d3bb9-7741-4cf6-ab85-b973dd2142c5
+    Description: ACM cert (us-east-1) covering AdminDomain — the *.wemojema.com wildcard.
 
 Resources:
 
@@ -33,6 +41,8 @@ Resources:
       DistributionConfig:
         Enabled: true
         Comment: !Ref ServiceName
+        Aliases:
+          - !Ref AdminDomain
         DefaultRootObject: index.html
         Origins:
           - Id: S3
@@ -56,6 +66,7 @@ Resources:
           TargetOriginId: S3
           ViewerProtocolPolicy: redirect-to-https
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
+          ResponseHeadersPolicyId: !Ref NoIndexHeadersPolicy
           AllowedMethods: [GET, HEAD, OPTIONS]
         # SPA client-side routing: serve index.html for unknown paths
         CustomErrorResponses:
@@ -66,7 +77,22 @@ Resources:
             ResponseCode: 200
             ResponsePagePath: /index.html
         ViewerCertificate:
-          CloudFrontDefaultCertificate: true
+          AcmCertificateArn: !Ref CertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+
+  # Tells search engines not to index the admin panel — applied to every SPA response
+  # regardless of crawler behavior (stronger than robots.txt / meta alone).
+  NoIndexHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub "${ServiceName}-noindex"
+        CustomHeadersConfig:
+          Items:
+            - Header: X-Robots-Tag
+              Value: "noindex, nofollow"
+              Override: true
 
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -91,3 +117,5 @@ Outputs:
     Value: !GetAtt Distribution.DomainName
   DistributionId:
     Value: !Ref Distribution
+  AdminUrl:
+    Value: !Sub "https://${AdminDomain}"
